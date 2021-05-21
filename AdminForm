@@ -1,0 +1,498 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.IO;
+using System.Data.SqlClient;    // for MySQL communication
+using MySql.Data.MySqlClient;   // for MySQL communication
+
+namespace _001_AMS
+{
+    public partial class AdminForm : MetroFramework.Forms.MetroForm
+    {
+        MySqlConnection mscn;
+        MySqlCommand mscm;
+        MySqlDataReader msdr;
+        String dbServer = "127.0.0.1";
+
+        public AdminForm()
+        {
+            InitializeComponent();
+        }
+
+        public AdminForm(String user_id)
+        {
+            InitializeComponent();
+
+            label23_User.Text = user_id;
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            mscn = new MySqlConnection("Server=" + dbServer + ";Database=ams_db;Uid=winuser;Pwd=p@ssw0rd;Charset=UTF8");
+            try
+            {
+                mscn.Open();
+                mscm = new MySqlCommand("", mscn);
+            }
+            catch 
+            {
+                MessageBox.Show("DB is disconnected. !!!!", "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            metroTabControl1_Select.SelectTab(0);
+            metroTabControl2_SelectAll.SelectTab(0);
+            metroTabControl4_SelectInOut.SelectTab(0);
+
+            metroButton1_Control_Click(new object(), new EventArgs());
+        }
+
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            mscn.Close();
+        }
+
+        private void metroButton1_Control_Click(object sender, EventArgs e)
+        {
+            panel2_Control.Visible = true;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectInOut.Visible = false;
+            panel6_UserControl.Visible = false;
+
+            dataGridView1_SelectAll.Rows.Clear();
+            dataGridView1_SelectAll.ColumnHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 12, FontStyle.Bold);
+            dataGridView1_SelectAll.RowHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 11, FontStyle.Bold);
+
+            int num = 0;
+            mscm.CommandText = "SELECT * FROM asset_tb;";
+            msdr = mscm.ExecuteReader();
+            while (msdr.Read())
+            {
+                dataGridView1_SelectAll.Rows.Add();
+                dataGridView1_SelectAll.Rows[num].HeaderCell.Value = (num + 1).ToString();
+                dataGridView1_SelectAll.Rows[num].Cells[0].ToolTipText = msdr["asset_rfid"].ToString();
+                dataGridView1_SelectAll.Rows[num].Cells[1].ToolTipText = msdr["asset_rfid"].ToString();
+                dataGridView1_SelectAll.Rows[num].Cells[2].Value = msdr["asset_rfid"];
+                dataGridView1_SelectAll.Rows[num].Cells[3].Value = msdr["asset_type"];
+                dataGridView1_SelectAll.Rows[num].Cells[4].Value = msdr["asset_name"];
+                dataGridView1_SelectAll.Rows[num].Cells[5].Value = msdr["asset_date"].ToString().Split(' ')[0];
+                dataGridView1_SelectAll.Rows[num].Cells[6].Value = msdr["asset_price"];
+                dataGridView1_SelectAll.Rows[num].Cells[7].Value = msdr["asset_user_id"];
+                num++;
+            }
+            dataGridView1_SelectAll.ClearSelection();
+            msdr.Close();
+        }
+
+        private void metroButton2_Select_All_Click(object sender, EventArgs e)
+        {
+            panel2_Control.Visible = false;
+            panel3_Select.Visible = true;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectInOut.Visible = false;
+            panel6_UserControl.Visible = false;
+
+            InsertForm inf = new InsertForm();
+            comboBox3_Type.Items.Clear();
+            comboBox3_Type.Items.Add("전체 품목 구분");
+            comboBox3_Type.Items.AddRange(inf.get_comboBox1_Type());
+            comboBox4_Department.Items.Clear();
+            comboBox4_Department.Items.Add("전체 사용 부서");
+            comboBox4_Department.Items.AddRange(inf.get_comboBox2_Department());
+        }
+        private void metroButton3_Click(object sender, EventArgs e)
+        {
+            panel2_Control.Visible = false;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = true;
+            panel5_SelectInOut.Visible = false;
+            panel6_UserControl.Visible = false;
+
+            InsertForm inf = new InsertForm();
+            chart1_TypeNum.Series[0].Points.Clear();
+            chart2_DepartmentNum.Series[0].Points.Clear();
+            chart3_TypePrice.Series[0].Points.Clear();
+            chart4_DepartmentPrice.Series[0].Points.Clear();
+            chart5_YearInsert.Series[0].Points.Clear();
+            chart5_YearInsert.Series[1].Points.Clear();
+
+            String[] tmpType = inf.get_comboBox1_Type();
+            String[] tmpDepartment = inf.get_comboBox2_Department();
+            int numSum = 0, priceSum = 0, num2 = 0;
+
+            for (int i = 0, k = 0; i < tmpType.Length; i++) 
+            {
+                mscm.CommandText = "SELECT COUNT(*) AS asset_count FROM asset_tb WHERE asset_type='" + tmpType[i] + "';";
+                msdr = mscm.ExecuteReader();
+                msdr.Read();
+                int asset_count = int.Parse(msdr["asset_count"].ToString());
+                if (asset_count > 0)
+                {
+                    chart1_TypeNum.Series[0].Points.Add(asset_count);
+                    chart1_TypeNum.Series[0].Points[k].Label = asset_count.ToString();
+                    chart1_TypeNum.Series[0].Points[k].LegendText = tmpType[i];
+                    k++;
+                    numSum += asset_count;
+                }
+                msdr.Close();
+            }
+            for (int i = 0, k = 0; i < tmpDepartment.Length; i++)
+            {
+                mscm.CommandText = "SELECT COUNT(*) AS asset_count FROM asset_tb WHERE asset_department='" + tmpDepartment[i] + "';";
+                msdr = mscm.ExecuteReader();
+                msdr.Read();
+                int asset_count = int.Parse(msdr["asset_count"].ToString());
+                if (asset_count > 0)
+                {
+                    chart2_DepartmentNum.Series[0].Points.Add(asset_count);
+                    chart2_DepartmentNum.Series[0].Points[k].Label = asset_count.ToString();
+                    chart2_DepartmentNum.Series[0].Points[k].LegendText = tmpDepartment[i];
+                    k++;
+                }
+                msdr.Close();
+            }
+            textBox3_NumSum.Text = numSum.ToString();
+
+            for (int i = 0, k = 0; i < tmpType.Length; i++)
+            {
+                mscm.CommandText = "SELECT SUM(asset_price) AS asset_sum FROM asset_tb WHERE asset_type='" + tmpType[i] + "';";
+                msdr = mscm.ExecuteReader();
+                msdr.Read();
+                if (msdr.IsDBNull(0) == true)
+                {
+                    msdr.Close();
+                    continue;
+                }
+                int asset_sum = int.Parse(msdr["asset_sum"].ToString());
+                if (asset_sum > 0)
+                {
+                    chart3_TypePrice.Series[0].Points.Add(asset_sum);
+                    chart3_TypePrice.Series[0].Points[k].Label = asset_sum.ToString();
+                    chart3_TypePrice.Series[0].Points[k].LegendText = tmpType[i];
+                    k++;
+                    priceSum += asset_sum;
+                }
+                msdr.Close();
+            }
+            for (int i = 0, k = 0; i < tmpDepartment.Length; i++)
+            {
+                mscm.CommandText = "SELECT SUM(asset_price) AS asset_sum FROM asset_tb WHERE asset_department='" + tmpDepartment[i] + "';";
+                msdr = mscm.ExecuteReader();
+                msdr.Read();
+                if (msdr.IsDBNull(0) == true)
+                {
+                    msdr.Close();
+                    continue;
+                }
+                int asset_sum = int.Parse(msdr["asset_sum"].ToString());
+                if (asset_sum > 0)
+                {
+                    chart4_DepartmentPrice.Series[0].Points.Add(asset_sum);
+                    chart4_DepartmentPrice.Series[0].Points[k].Label = asset_sum.ToString();
+                    chart4_DepartmentPrice.Series[0].Points[k].LegendText = tmpDepartment[i];
+                    k++;
+                }
+                msdr.Close();
+            }
+            textBox4_PriceSum.Text = priceSum.ToString();
+
+            mscm.CommandText = "SELECT asset_insert_date, COUNT(*) AS year_count FROM asset_insert_tb GROUP BY asset_insert_date;";
+            msdr = mscm.ExecuteReader();
+            while (msdr.Read())
+            {
+                chart5_YearInsert.Series[0].Points.Add(int.Parse(msdr["year_count"].ToString()));
+                chart5_YearInsert.Series[0].Points[num2].AxisLabel = msdr["asset_insert_date"].ToString();
+                num2++;
+            }
+            msdr.Close();
+
+            mscm.CommandText = "SELECT asset_delete_date, COUNT(*) AS year_count FROM asset_delete_tb GROUP BY asset_delete_date;";
+            msdr = mscm.ExecuteReader();
+            while (msdr.Read())
+            {
+                chart5_YearInsert.Series[1].Points.Add(int.Parse(msdr["year_count"].ToString()));
+            }
+            msdr.Close();
+        }
+
+        private void metroButton5_SelectInOut_Click(object sender, EventArgs e)
+        {
+            panel2_Control.Visible = false;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectInOut.Visible = true;
+            panel6_UserControl.Visible = false;
+
+            dateTimePicker3.Text = DateTime.Now.ToString("yyyy-MM-dd") + " 00:00:00";
+            dateTimePicker4.Text = DateTime.Now.ToString("yyyy-MM-dd") + " 23:59:59";
+
+            dataGridView2_SelectInOut.Rows.Clear();
+            dataGridView2_SelectInOut.ColumnHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 12, FontStyle.Bold);
+            dataGridView2_SelectInOut.RowHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 11, FontStyle.Bold);
+
+            int num = 0;
+            mscm.CommandText = "SELECT asset_inout_rfid, asset_inout_outdate, asset_inout_reason, asset_inout_temp_indate, asset_user_id FROM asset_inout_tb, asset_tb WHERE asset_inout_tb.asset_inout_rfid=asset_tb.asset_rfid AND asset_inout_state=TRUE;";
+            msdr = mscm.ExecuteReader();
+            while (msdr.Read())
+            {
+                dataGridView2_SelectInOut.Rows.Add();
+                dataGridView2_SelectInOut.Rows[num].HeaderCell.Value = (num + 1).ToString();
+                dataGridView2_SelectInOut.Rows[num].Cells[0].Value = msdr["asset_inout_rfid"];
+                dataGridView2_SelectInOut.Rows[num].Cells[1].Value = msdr["asset_inout_outdate"];
+                dataGridView2_SelectInOut.Rows[num].Cells[2].Value = msdr["asset_inout_reason"];
+                dataGridView2_SelectInOut.Rows[num].Cells[3].Value = msdr["asset_inout_temp_indate"].ToString().Split(' ')[0];
+                dataGridView2_SelectInOut.Rows[num].Cells[4].Value = msdr["asset_user_id"];
+                num++;
+            }
+            dataGridView2_SelectInOut.ClearSelection();
+            msdr.Close();
+        }
+
+        private void metroButton6_UserControl_Click(object sender, EventArgs e)
+        {
+            panel2_Control.Visible = false;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectInOut.Visible = false;
+            panel6_UserControl.Visible = true;
+
+            dataGridView2_SelectUser.Rows.Clear();
+            dataGridView2_SelectUser.ColumnHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 12, FontStyle.Bold);
+            dataGridView2_SelectUser.RowHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 11, FontStyle.Bold);
+
+            int num = 0;
+            mscm.CommandText = "SELECT user_id, user_name, user_department, user_phone, COUNT(asset_rfid) AS asset_count FROM user_tb, asset_tb WHERE user_id=asset_user_id GROUP BY user_id;";
+            msdr = mscm.ExecuteReader();
+            while (msdr.Read())
+            {
+                if(msdr["user_id"].ToString() == "admin")
+                {
+                    continue;
+                }
+                dataGridView2_SelectUser.Rows.Add();
+                dataGridView2_SelectUser.Rows[num].HeaderCell.Value = (num + 1).ToString();
+                dataGridView2_SelectUser.Rows[num].Cells[0].ToolTipText = msdr["user_id"].ToString();
+                dataGridView2_SelectUser.Rows[num].Cells[1].Value = msdr["user_id"];
+                dataGridView2_SelectUser.Rows[num].Cells[2].Value = msdr["user_name"];
+                dataGridView2_SelectUser.Rows[num].Cells[3].Value = msdr["user_department"];
+                dataGridView2_SelectUser.Rows[num].Cells[4].Value = msdr["user_phone"];
+                dataGridView2_SelectUser.Rows[num].Cells[5].Value = msdr["asset_count"];
+                num++;
+            }
+            msdr.Close();
+            mscm.CommandText = "SELECT user_id, user_name, user_department, user_phone FROM user_tb;";
+            msdr = mscm.ExecuteReader();
+            while (msdr.Read())
+            {
+                dataGridView2_SelectUser.Rows.Add();
+                dataGridView2_SelectUser.Rows[num].HeaderCell.Value = (num + 1).ToString();
+                dataGridView2_SelectUser.Rows[num].Cells[0].ToolTipText = msdr["user_id"].ToString();
+                dataGridView2_SelectUser.Rows[num].Cells[1].Value = msdr["user_id"];
+                dataGridView2_SelectUser.Rows[num].Cells[2].Value = msdr["user_name"];
+                dataGridView2_SelectUser.Rows[num].Cells[3].Value = msdr["user_department"];
+                dataGridView2_SelectUser.Rows[num].Cells[4].Value = msdr["user_phone"];
+                dataGridView2_SelectUser.Rows[num].Cells[5].Value = 0;
+                num++;
+            }
+            dataGridView2_SelectUser.ClearSelection();
+            msdr.Close();
+        }
+
+        private void button1_NameSelect_Click(object sender, EventArgs e)
+        {
+            if (textBox2_NameSelect.Text == "")
+            {
+                MessageBox.Show("이름을 입력해주세요.", "can not find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_name LIKE '%" + textBox2_NameSelect.Text + "%';";
+            msdr = mscm.ExecuteReader();
+
+            listView1_NameSelect.Items.Clear();
+            if (msdr.HasRows == false)
+            {
+                MessageBox.Show("검색된 자산이 없습니다.", "can not find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            else
+            {
+                while (msdr.Read())
+                {
+                    ListViewItem lvi = new ListViewItem(new String[] { "", msdr["asset_rfid"].ToString(), msdr["asset_type"].ToString(), msdr["asset_name"].ToString(), msdr["asset_date"].ToString().Split(' ')[0], msdr["asset_price"].ToString(), msdr["asset_department"].ToString() });
+                    listView1_NameSelect.Items.Add(lvi);
+                }
+            }
+
+            msdr.Close();
+        }
+
+        private void button2_ItemSelect_Click(object sender, EventArgs e)
+        {
+            if (!(comboBox3_Type.Text == "전체 품목 구분") && !(comboBox4_Department.Text == "전체 사용 부서"))
+                mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_type='" + comboBox3_Type.Text + "' AND asset_department='" + comboBox4_Department.Text + "';";
+            else if (!(comboBox3_Type.Text == "전체 품목 구분") && comboBox4_Department.Text == "전체 사용 부서")
+                mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_type='" + comboBox3_Type.Text + "';";
+            else if (comboBox3_Type.Text == "전체 품목 구분" && !(comboBox4_Department.Text == "전체 사용 부서"))
+                mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_department='" + comboBox4_Department.Text + "';";
+            else
+            {
+                MessageBox.Show("1개 이상의 항목을 선택해주세요.", "can not find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            msdr = mscm.ExecuteReader();
+
+            listView2_ItemSelect.Items.Clear();
+            if (msdr.HasRows == false)
+            {
+                MessageBox.Show("검색된 자산이 없습니다.", "can not find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            else
+            {
+                while (msdr.Read())
+                {
+                    ListViewItem lvi = new ListViewItem(new String[] { "", msdr["asset_rfid"].ToString(), msdr["asset_type"].ToString(), msdr["asset_name"].ToString(), msdr["asset_date"].ToString().Split(' ')[0], msdr["asset_price"].ToString(), msdr["asset_department"].ToString() });
+                    listView2_ItemSelect.Items.Add(lvi);
+                }
+            }
+
+            msdr.Close();
+        }
+        private void button3_DateSelect_Click(object sender, EventArgs e)
+        {
+            listView3_DateSelect.Items.Clear();
+
+            mscm.CommandText = "SELECT * FROM asset_inout_tb WHERE asset_inout_outdate BETWEEN '" + dateTimePicker3.Text + "' AND '" + dateTimePicker4.Text + "';";
+            msdr = mscm.ExecuteReader();
+            while (msdr.Read())
+            {
+                String asset_inout_state = msdr["asset_inout_state"].ToString();
+                if (asset_inout_state == "False")
+                    asset_inout_state = "반입";
+                else
+                    asset_inout_state = "반출";
+
+                ListViewItem lvi = new ListViewItem(new String[] { "", msdr["asset_inout_rfid"].ToString(), msdr["asset_inout_outdate"].ToString(), msdr["asset_inout_reason"].ToString(), msdr["asset_inout_temp_indate"].ToString().Split(' ')[0], msdr["asset_inout_indate"].ToString(), asset_inout_state });
+                listView3_DateSelect.Items.Add(lvi);
+            }
+
+            msdr.Close();
+        }
+
+        private void metroButton10_Logout_Click(object sender, EventArgs e)
+        {
+            this.DialogResult = DialogResult.OK;
+        }
+
+        private void dataGridView1_SelectAll_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            String cellValue = "";
+            try
+            {
+                cellValue = dataGridView1_SelectAll.SelectedCells[0].ToolTipText;
+            }
+            catch { }
+
+            if (cellValue != "")
+            {
+                if(dataGridView1_SelectAll.CurrentCell.ColumnIndex == 0)
+                {
+                    if (MessageBox.Show("  해당 자산을 폐기하겠습니까?", "Check", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    {
+                        try
+                        {
+                            String year = System.DateTime.Now.ToString("yyyy");
+                            mscm.CommandText = "INSERT INTO asset_delete_tb VALUES (NULL, " + year + ");";
+                            mscm.ExecuteNonQuery();
+                            mscm.CommandText = "DELETE FROM asset_inout_tb WHERE asset_inout_rfid = '" + cellValue + "';";
+                            mscm.ExecuteNonQuery();
+                            mscm.CommandText = "DELETE FROM asset_tb WHERE asset_rfid = '" + cellValue + "';";
+                            mscm.ExecuteNonQuery();
+                            MessageBox.Show("폐기되었습니다.", "성공", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        catch { }
+                    }
+                }
+                else if (dataGridView1_SelectAll.CurrentCell.ColumnIndex == 1)
+                {
+                    mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_rfid='" + cellValue + "';";
+                    msdr = mscm.ExecuteReader();
+                    msdr.Read();
+
+                    if (!(msdr["asset_image"] is System.DBNull))
+                    {
+                        int f_size = int.Parse(msdr["asset_image_size"].ToString());
+                        byte[] f_data = new byte[f_size];
+                        msdr.GetBytes(msdr.GetOrdinal("asset_image"), 0, f_data, 0, f_size);
+
+                        String tmpFileName = System.IO.Path.GetTempPath() + "tempImage.png";
+                        FileStream fs = new FileStream(tmpFileName, FileMode.OpenOrCreate, FileAccess.Write);
+                        fs.Write(f_data, 0, (int)f_size);
+                        fs.Close();
+
+                        Bitmap bitmap = new Bitmap(tmpFileName);
+                        int outW = bitmap.Height;
+                        int outH = bitmap.Width;
+                        byte[,,] outImage = new byte[3, outH, outW];
+                        for (int i = 0; i < outH; i++)
+                        {
+                            for (int k = 0; k < outW; k++)
+                            {
+                                Color c = bitmap.GetPixel(i, k);
+                                outImage[0, i, k] = c.R;
+                                outImage[1, i, k] = c.G;
+                                outImage[2, i, k] = c.B;
+                            }
+                        }
+                        bitmap.Dispose();
+                        System.IO.File.Delete(tmpFileName);
+
+                        InsertForm inf = new InsertForm(1, msdr["asset_rfid"].ToString(), msdr["asset_type"].ToString(), msdr["asset_name"].ToString(), msdr["asset_date"].ToString(), msdr["asset_price"].ToString(), msdr["asset_department"].ToString(), outH, outW, outImage);
+                        inf.ShowDialog();
+                    }
+                    else
+                    {
+                        byte[,,] outImage = null;
+                        InsertForm inf = new InsertForm(1, msdr["asset_rfid"].ToString(), msdr["asset_type"].ToString(), msdr["asset_name"].ToString(), msdr["asset_date"].ToString(), msdr["asset_price"].ToString(), msdr["asset_department"].ToString(), 0, 0, outImage);
+                        inf.ShowDialog();
+                    }
+                    msdr.Close();
+                }
+            }
+        }
+
+        private void dataGridView2_SelectUser_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            String cellValue = "";
+            try
+            {
+                cellValue = dataGridView2_SelectUser.SelectedCells[0].ToolTipText;
+            }
+            catch { }
+
+            if (cellValue != "")
+            {
+                if (MessageBox.Show("  해당 사용자를 삭제하겠습니까?", "Check", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
+                    try
+                    {
+                        mscm.CommandText = "DELETE FROM user_tb WHERE user_id = '" + cellValue + "';";
+                        mscm.ExecuteNonQuery();
+                        MessageBox.Show("삭제되었습니다.", "성공", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch
+                    {
+                        MessageBox.Show("해당 사용자가 사용중인 자산이 있습니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+
+    }
+}
