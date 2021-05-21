@@ -1,0 +1,106 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Data.SqlClient;    // for MySQL communication
+using MySql.Data.MySqlClient;   // for MySQL communication
+
+namespace _001_AMS
+{
+    public partial class JoinForm : Form
+    {
+        MySqlConnection mscn;
+        MySqlCommand mscm;
+        MySqlDataReader msdr;
+        String dbServer = "127.0.0.1";
+
+        public JoinForm()
+        {
+            InitializeComponent();
+        }
+
+        private void JoinForm_Load(object sender, EventArgs e)
+        {
+            mscn = new MySqlConnection("Server=" + dbServer + ";Database=ams_db;Uid=winuser;Pwd=p@ssw0rd;Charset=UTF8");
+            try
+            {
+                mscn.Open();
+                mscm = new MySqlCommand("", mscn);
+            }
+            catch
+            {
+                MessageBox.Show("DB is disconnected. !!!!", "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            InsertForm inf = new InsertForm();
+            comboBox1_Department.Items.AddRange(inf.get_comboBox2_Department());
+        }
+
+        private void JoinForm_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            mscn.Close();
+        }
+
+        private void button2_Join_Click(object sender, EventArgs e)
+        {
+            if (textBox1_ID.Text == "")
+            {
+                MessageBox.Show("ID를 입력해주세요.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (textBox2_PW.Text == "")
+            {
+                MessageBox.Show("Password를 입력해주세요.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (textBox3_Name.Text == "")
+            {
+                MessageBox.Show("이름을 입력해주세요.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (comboBox1_Department.Text == "")
+            {
+                MessageBox.Show("부서를 입력해주세요.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (!(textBox4_Phone1.Text.Length == 3) || !(textBox5_Phone2.Text.Length == 4) || !(textBox6_Phone3.Text.Length == 4)) 
+            {
+                MessageBox.Show("올바른 전화번호를 입력해주세요.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            try
+            {
+                int phone1 = int.Parse(textBox4_Phone1.Text);
+                int phone2 = int.Parse(textBox5_Phone2.Text);
+                int phone3 = int.Parse(textBox6_Phone3.Text);
+            }
+            catch
+            {
+                MessageBox.Show("올바른 전화번호를 입력해주세요.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            mscm.CommandText = "SELECT * FROM user_tb WHERE user_id='" + textBox1_ID.Text + "';";
+            msdr = mscm.ExecuteReader();
+            if (msdr.HasRows == true) 
+            {
+                msdr.Close();
+                MessageBox.Show("이미 사용중인 ID입니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            msdr.Close();
+
+            String phoneNumber = textBox4_Phone1.Text + '-' + textBox5_Phone2.Text + '-' + textBox6_Phone3.Text;
+            mscm.CommandText = "INSERT INTO user_tb VALUES ('" + textBox1_ID.Text + "', '" + textBox2_PW.Text + "', '" + textBox3_Name.Text + "', '" + comboBox1_Department.Text + "', '" + phoneNumber + "');";
+            mscm.ExecuteNonQuery();
+            MessageBox.Show("가입되었습니다.", "성공", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            this.DialogResult = DialogResult.OK;
+        }
+
+    }
+}
