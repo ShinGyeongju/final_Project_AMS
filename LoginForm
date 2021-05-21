@@ -1,0 +1,119 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Data.SqlClient;    // for MySQL communication
+using MySql.Data.MySqlClient;   // for MySQL communication
+
+namespace _001_AMS
+{
+    public partial class LoginForm : Form
+    {
+        MySqlConnection mscn;
+        MySqlCommand mscm;
+        MySqlDataReader msdr;
+        String dbServer = "127.0.0.1";
+        public String user_id;
+
+        public LoginForm()
+        {
+            InitializeComponent();
+        }
+
+        private void LoginForm_Load(object sender, EventArgs e)
+        {
+            mscn = new MySqlConnection("Server=" + dbServer + ";Database=ams_db;Uid=winuser;Pwd=p@ssw0rd;Charset=UTF8");
+            try
+            {
+                mscn.Open();
+                mscm = new MySqlCommand("", mscn);
+            }
+            catch
+            {
+                MessageBox.Show("DB is disconnected. !!!!", "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void LoginForm_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            mscn.Close();
+        }
+
+        private void button1_Login_Click(object sender, EventArgs e)
+        {
+            if (textBox1_ID.Text == "")
+            {
+                MessageBox.Show("ID를 입력해주세요.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (textBox2_PW.Text == "")
+            {
+                MessageBox.Show("Password를 입력해주세요.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            user_id = textBox1_ID.Text;
+            mscm.CommandText = "SELECT * FROM user_tb WHERE user_id='" + user_id + "';";
+            msdr = mscm.ExecuteReader();
+            if (msdr.HasRows == false)
+            {
+                msdr.Close();
+                MessageBox.Show("등록되지 않은 ID입니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                textBox1_ID.Text = "";
+                return;
+            }
+
+            msdr.Read();
+            if (msdr["user_pw"].ToString() != textBox2_PW.Text) 
+            {
+                msdr.Close();
+                MessageBox.Show("Password가 일치하지 않습니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                textBox2_PW.Text = "";
+                return;
+            }
+            msdr.Close();
+
+            if (user_id == "admin")
+            {
+                AdminForm af = new AdminForm(user_id);
+                if (af.ShowDialog() == DialogResult.OK)
+                {
+                    textBox2_PW.Text = "";
+                    return;
+                }
+                else
+                {
+                    this.Close();
+                }
+            }
+            else
+            {
+                UserForm uf = new UserForm(user_id);
+                if (uf.ShowDialog() == DialogResult.OK)
+                {
+                    textBox2_PW.Text = "";
+                    return;
+                }
+                else
+                {
+                    this.Close();
+                }
+            }
+        }
+
+        private void button2_Join_Click(object sender, EventArgs e)
+        {
+            JoinForm jf = new JoinForm();
+            if (!(jf.ShowDialog() == DialogResult.OK))
+            {
+                return;
+            }
+        }
+
+    }
+}
