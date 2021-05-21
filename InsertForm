@@ -1,0 +1,294 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace _001_AMS
+{
+    public partial class InsertForm : MetroFramework.Forms.MetroForm
+    {
+        public String asset_Type, asset_Name, asset_Date, asset_Department, asset_InOut_Date, asset_Reason;
+        public uint asset_Price;
+        public String fileName;
+        public byte[,,] inImage = null;
+
+        public InsertForm()
+        {
+            InitializeComponent();
+        }
+
+        public InsertForm(int num, String RFID)
+        {
+            InitializeComponent();
+
+            if (num == 1)
+            {
+                textBox1_RFID.Text = RFID;
+                button2_Ok.Enabled = false;
+                button2_Ok.Visible = false;
+                button3_Ok.Enabled = false;
+                button3_Ok.Visible = false;
+                button4_Ok.Enabled = false;
+                button4_Ok.Visible = false;
+            }
+            else if (num == 2)
+            {
+                this.Text = "자산 반출";
+                textBox1_RFID.Text = RFID;
+                label2.Enabled = false;
+                label2.Visible = false;
+                comboBox1_Type.Enabled = false;
+                comboBox1_Type.Visible = false;
+                label5.Enabled = false;
+                label5.Visible = false;
+                textBox3_Price.Enabled = false;
+                textBox3_Price.Visible = false;
+                label6.Enabled = false;
+                label6.Visible = false;
+                label7.Enabled = false;
+                label7.Visible = false;
+                comboBox2_Department.Enabled = false;
+                comboBox2_Department.Visible = false;
+                label3.Text = "반출 사유";
+                label4.Text = "반입 예정일";
+                button1_Ok.Enabled = false;
+                button1_Ok.Visible = false;
+                button2_Ok.Enabled = false;
+                button2_Ok.Visible = false;
+                button3_Ok.Enabled = false;
+                button3_Ok.Visible = false;
+            }
+        }
+
+        public InsertForm(int num, String RFID, String asset_type, String asset_name, String asset_date, String asset_price, String asset_department, int h, int w, byte[,,] outImage)
+        {
+            InitializeComponent();
+
+            if (num == 1)
+            {
+                this.Text = "자산 상세 조회";
+                textBox1_RFID.Text = RFID;
+                comboBox1_Type.Text = asset_type;
+                comboBox1_Type.Enabled = false;
+                textBox2_Name.Text = asset_name;
+                textBox2_Name.Enabled = false;
+                dateTimePicker1.Text = asset_date;
+                dateTimePicker1.Enabled = false;
+                textBox3_Price.Text = asset_price;
+                textBox3_Price.Enabled = false;
+                comboBox2_Department.Text = asset_department;
+                comboBox2_Department.Enabled = false;
+                button1_Ok.Enabled = false;
+                button1_Ok.Visible = false;
+                button3_Ok.Enabled = false;
+                button3_Ok.Visible = false;
+                button4_Ok.Enabled = false;
+                button4_Ok.Visible = false;
+                button5_Upload.Enabled = false;
+                button5_Upload.Text = "이미지";
+
+                if (outImage != null)
+                {
+                    display_Image(h, w, outImage);
+                }
+            }
+            else if (num == 2)
+            {
+                this.Text = "자산 정보 변경";
+                textBox1_RFID.Text = RFID;
+                comboBox1_Type.Text = asset_type;
+                textBox2_Name.Text = asset_name;
+                dateTimePicker1.Text = asset_date;
+                textBox3_Price.Text = asset_price;
+                comboBox2_Department.Text = asset_department;
+                button1_Ok.Enabled = false;
+                button1_Ok.Visible = false;
+                button2_Ok.Enabled = false;
+                button2_Ok.Visible = false;
+                button4_Ok.Enabled = false;
+                button4_Ok.Visible = false;
+
+                if (outImage != null)
+                {
+                    display_Image(h, w, outImage);
+                    inImage = outImage;
+                }
+                else
+                {
+                    inImage = null;
+                }
+            }
+        }
+
+        private void InsertForm_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button1_Ok_Click(object sender, EventArgs e)
+        {
+            if (comboBox1_Type.Text == "")
+            {
+                MessageBox.Show("품목 구분을 선택해주세요.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return; 
+            }
+            if (textBox2_Name.Text == "")
+            {
+                MessageBox.Show("품목 이름을 입력해주세요.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (textBox3_Price.Text == "")
+            {
+                MessageBox.Show("취득 가액을 입력해주세요.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (comboBox2_Department.Text == "")
+            {
+                MessageBox.Show("사용 부서를 선택해주세요.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            asset_Type = comboBox1_Type.Text;
+            asset_Name = textBox2_Name.Text;
+            asset_Date = dateTimePicker1.Text;
+            try
+            {
+                asset_Price = uint.Parse(textBox3_Price.Text);
+            }
+            catch
+            {
+                MessageBox.Show("취득 가액을 확인해주세요.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            asset_Department = comboBox2_Department.Text;
+
+            this.DialogResult = DialogResult.OK;
+        }
+
+        private void button2_Ok_Click(object sender, EventArgs e)
+        {
+            this.DialogResult = DialogResult.OK;
+        }
+
+        private void button3_Ok_Click(object sender, EventArgs e)
+        {
+            if (comboBox1_Type.Text == "")
+            {
+                MessageBox.Show("품목 구분을 선택해주세요.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (textBox2_Name.Text == "")
+            {
+                MessageBox.Show("품목 이름을 입력해주세요.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (textBox3_Price.Text == "")
+            {
+                MessageBox.Show("취득 가액을 입력해주세요.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (comboBox2_Department.Text == "")
+            {
+                MessageBox.Show("사용 부서를 선택해주세요.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            asset_Type = comboBox1_Type.Text;
+            asset_Name = textBox2_Name.Text;
+            asset_Date = dateTimePicker1.Text;
+            asset_Price = uint.Parse(textBox3_Price.Text);
+            asset_Department = comboBox2_Department.Text;
+
+            this.DialogResult = DialogResult.OK;
+        }
+
+        private void button4_Ok_Click(object sender, EventArgs e)
+        {
+            if (textBox2_Name.Text == "")
+            {
+                MessageBox.Show("반출 사유를 입력해주세요.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            asset_Reason = textBox2_Name.Text;
+            asset_InOut_Date = dateTimePicker1.Text;
+
+            this.DialogResult = DialogResult.OK;
+        }
+
+        private void button5_Upload_Click_1(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.Filter = "이미지|*.png; *.jpg; *.bmp; *.tif";
+            if (ofd.ShowDialog() != DialogResult.OK)
+            {
+                return;
+            }
+
+            fileName = ofd.FileName;
+            Bitmap bitmap = new Bitmap(fileName);
+
+            int inW = bitmap.Height;
+            int inH = bitmap.Width;
+            inImage = new byte[3, inH, inW];
+
+            for (int i = 0; i < inH; i++)
+            {
+                for (int k = 0; k < inW; k++)
+                {
+                    Color c = bitmap.GetPixel(i, k);
+                    inImage[0, i, k] = c.R;
+                    inImage[1, i, k] = c.G;
+                    inImage[2, i, k] = c.B;
+                }
+            }
+
+            display_Image(inH, inW, inImage);
+        }
+
+        public String[] get_comboBox1_Type()
+        {
+            String[] tmpType = new string[comboBox1_Type.Items.Count];
+            for (int i = 0; i < tmpType.Length; i++)
+            {
+                tmpType[i] = comboBox1_Type.Items[i].ToString();
+            }
+
+            return tmpType;
+        }
+
+        public String[] get_comboBox2_Department()
+        {
+            String[] tmpDepartment = new string[comboBox2_Department.Items.Count];
+            for (int i = 0; i < tmpDepartment.Length; i++)
+            {
+                tmpDepartment[i] = comboBox2_Department.Items[i].ToString();
+            }
+
+            return tmpDepartment;
+        }
+
+        public void display_Image(int h, int w, byte[,,] outImage)
+        {
+            Bitmap paper = new Bitmap(h, w);
+            //pictureBox1.Size = new Size(inH, inW);
+
+            for (int i = 0; i < h; i++)
+            {
+                for (int k = 0; k < w; k++)
+                {
+                    byte r = outImage[0, i, k];
+                    byte g = outImage[1, i, k];
+                    byte b = outImage[2, i, k];
+                    Color pen = Color.FromArgb(r, g, b);
+                    paper.SetPixel(i, k, pen);
+                }
+            }
+            pictureBox1.Image = paper;
+        }
+    }
+}
