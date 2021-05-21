@@ -1,0 +1,551 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.IO;
+using System.IO.Ports;          // for UART communication
+using System.Data.SqlClient;    // for MySQL communication
+using MySql.Data.MySqlClient;   // for MySQL communication
+
+namespace _001_AMS
+{
+    public partial class UserForm : MetroFramework.Forms.MetroForm
+    {
+        MySqlConnection mscn;
+        MySqlCommand mscm;
+        MySqlDataReader msdr;
+        String dbServer = "127.0.0.1";
+        String user_id, receivedData;
+
+        public UserForm()
+        {
+            InitializeComponent();
+        }
+
+        public UserForm(String user_id)
+        {
+            InitializeComponent();
+
+            this.user_id = user_id;
+            label23_User.Text = user_id;
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            mscn = new MySqlConnection("Server=" + dbServer + ";Database=ams_db;Uid=winuser;Pwd=p@ssw0rd;Charset=UTF8");
+            try
+            {
+                mscn.Open();
+                mscm = new MySqlCommand("", mscn);
+            }
+            catch 
+            {
+                MessageBox.Show("DB is disconnected. !!!!", "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            try
+            {
+                serialPort1.Open();
+            }
+            catch
+            {
+                MessageBox.Show("COM Port is disconnected. !!!!", "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            metroButton1_Insert_Click(new object(), new EventArgs());
+        }
+
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            mscn.Close();
+            serialPort1.Close();
+        }
+
+        private void metroButton1_Insert_Click(object sender, EventArgs e)
+        {
+            panel2_Insert.Visible = true;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectOut.Visible = false;
+            panel6_Update.Visible = false;
+            panel7_Out.Visible = false;
+            panel8_In.Visible = false;
+            panel9_Delete.Visible = false;
+
+        }
+
+        private void metroButton2_Select_All_Click(object sender, EventArgs e)
+        {
+            panel2_Insert.Visible = false;
+            panel3_Select.Visible = true;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectOut.Visible = false;
+            panel6_Update.Visible = false;
+            panel7_Out.Visible = false;
+            panel8_In.Visible = false;
+            panel9_Delete.Visible = false;
+
+        }
+        private void metroButton3_Click(object sender, EventArgs e)
+        {
+            panel2_Insert.Visible = false;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = true;
+            panel5_SelectOut.Visible = false;
+            panel6_Update.Visible = false;
+            panel7_Out.Visible = false;
+            panel8_In.Visible = false;
+            panel9_Delete.Visible = false;
+
+            listView1_SelectID.Items.Clear();
+            mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_user_id='" + user_id + "';";
+            msdr = mscm.ExecuteReader();
+            while (msdr.Read())
+            {
+                ListViewItem lvi = new ListViewItem(new String[] { "", msdr["asset_rfid"].ToString(), msdr["asset_type"].ToString(), msdr["asset_name"].ToString(), msdr["asset_date"].ToString().Split(' ')[0], msdr["asset_price"].ToString(), msdr["asset_department"].ToString() });
+                listView1_SelectID.Items.Add(lvi);
+            }
+
+            msdr.Close();
+        }
+
+        private void metroButton5_SelectInOut_Click(object sender, EventArgs e)
+        {
+            panel2_Insert.Visible = false;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectOut.Visible = true;
+            panel6_Update.Visible = false;
+            panel7_Out.Visible = false;
+            panel8_In.Visible = false;
+            panel9_Delete.Visible = false;
+
+            listView2_InOut.Items.Clear();
+            mscm.CommandText = "SELECT asset_inout_rfid, asset_inout_outdate, asset_inout_reason, asset_inout_temp_indate FROM asset_inout_tb, asset_tb WHERE asset_inout_tb.asset_inout_rfid=asset_tb.asset_rfid AND asset_tb.asset_user_id='" + user_id + "' AND asset_inout_state=TRUE;";
+            msdr = mscm.ExecuteReader();
+            while (msdr.Read())
+            {
+                String[] date1 = msdr["asset_inout_temp_indate"].ToString().Split(' ')[0].Split('-');
+                DateTime dt1 = new DateTime(int.Parse(date1[0]), int.Parse(date1[1]), int.Parse(date1[2]));
+                DateTime dt2 = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day);
+
+                ListViewItem lvi = new ListViewItem(new String[] { "", msdr["asset_inout_rfid"].ToString(), msdr["asset_inout_outdate"].ToString().Split(' ')[0], msdr["asset_inout_reason"].ToString(), dt1.ToString().Split(' ')[0], (dt1 - dt2).Days.ToString() });
+                listView2_InOut.Items.Add(lvi);
+            }
+
+            msdr.Close();
+        }
+
+        private void metroButton6_Update_Click(object sender, EventArgs e)
+        {
+            panel2_Insert.Visible = false;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectOut.Visible = false;
+            panel6_Update.Visible = true;
+            panel7_Out.Visible = false;
+            panel8_In.Visible = false;
+            panel9_Delete.Visible = false;
+
+        }
+
+        private void metroButton7_InOut_Click(object sender, EventArgs e)
+        {
+            panel2_Insert.Visible = false;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectOut.Visible = false;
+            panel6_Update.Visible = false;
+            panel7_Out.Visible = true;
+            panel8_In.Visible = false;
+            panel9_Delete.Visible = false;
+
+        }
+
+        private void metroButton8_In_Click(object sender, EventArgs e)
+        {
+            panel2_Insert.Visible = false;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectOut.Visible = false;
+            panel6_Update.Visible = false;
+            panel7_Out.Visible = false;
+            panel8_In.Visible = true;
+            panel9_Delete.Visible = false;
+
+        }
+
+        private void metroButton8_Delete_Click(object sender, EventArgs e)
+        {
+            panel2_Insert.Visible = false;
+            panel3_Select.Visible = false;
+            panel4_SelectAll.Visible = false;
+            panel5_SelectOut.Visible = false;
+            panel6_Update.Visible = false;
+            panel7_Out.Visible = false;
+            panel8_In.Visible = false;
+            panel9_Delete.Visible = true;
+
+        }
+
+        private void serialPort1_DataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            receivedData = serialPort1.ReadLine();        // STM32로 부터 데이터를 읽어들임
+                                                          // 115200 BPS의 경우 1 char당 약 0.1ms가 소요됨
+            this.Invoke(new EventHandler(ShowData));
+        }
+
+        private void ShowData(object sender, EventArgs e)
+        {
+            if (receivedData.Contains("RFID") == true && panel2_Insert.Visible == true)
+            {
+                String tmpReceivedData = receivedData.Split('=')[1];
+                String tmpRFID = tmpReceivedData.Replace(" ", "");
+
+                mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_rfid='" + tmpRFID + "';";
+                msdr = mscm.ExecuteReader();
+                msdr.Read();
+                if (msdr.HasRows == true) 
+                {
+                    msdr.Close();
+                    MessageBox.Show("이미 등록된 RFID입니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else
+                {
+                    msdr.Close();
+                    InsertForm inf = new InsertForm(1, tmpRFID);
+                    if (inf.ShowDialog() == DialogResult.OK)
+                    {
+                        try
+                        {
+                            String year = System.DateTime.Now.ToString("yyyy");
+                            mscm.CommandText = "INSERT INTO asset_insert_tb VALUES (NULL, " + year + ");";
+                            mscm.ExecuteNonQuery();
+                            if (inf.inImage == null)
+                            {
+                                mscm.CommandText = "INSERT INTO asset_tb VALUES ('" + tmpRFID + "', '" + user_id + "', '" + inf.asset_Type + "', '" + inf.asset_Name + "', '" + inf.asset_Date + "', " + inf.asset_Price + ", '" + inf.asset_Department + "', NULL, NULL);";
+                            }
+                            else
+                            {
+                                long f_size = new FileInfo(inf.fileName).Length;
+                                FileStream fs = new FileStream(inf.fileName, FileMode.Open, FileAccess.Read);
+                                byte[] blob_data = new byte[f_size];
+                                fs.Read(blob_data, 0, (int)f_size);
+                                fs.Close();
+
+                                mscm.CommandText = "INSERT INTO asset_tb VALUES ('" + tmpRFID + "', '"+ user_id + "', '" + inf.asset_Type + "', '" + inf.asset_Name + "', '" + inf.asset_Date + "', " + inf.asset_Price + ", '" + inf.asset_Department + "', @BLOB_DATA, " + f_size + ");";
+                                mscm.Parameters.AddWithValue("@BLOB_DATA", blob_data);
+                            }
+                            mscm.ExecuteNonQuery();
+                            inf.inImage = null;
+                            mscm.Parameters.Clear();
+                            MessageBox.Show("등록되었습니다.", "성공", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        catch { }
+                    }
+                }
+            }
+            else if (receivedData.Contains("RFID") == true && panel3_Select.Visible == true) 
+            {
+                String tmpReceivedData = receivedData.Split('=')[1];
+                String tmpRFID = tmpReceivedData.Replace(" ", "");
+
+                mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_rfid='" + tmpRFID + "';";
+                msdr = mscm.ExecuteReader();
+                msdr.Read();
+
+                if (msdr.HasRows == false)
+                {
+                    MessageBox.Show("등록되지 않은 RFID입니다.", "can not find", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else if (msdr["asset_user_id"].ToString() != user_id)
+                {
+                    MessageBox.Show("해당자산의 사용자가 아닙니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else
+                {
+                    if (!(msdr["asset_image"] is System.DBNull)) 
+                    {
+                        int f_size = int.Parse(msdr["asset_image_size"].ToString());
+                        byte[] f_data = new byte[f_size];
+                        msdr.GetBytes(msdr.GetOrdinal("asset_image"), 0, f_data, 0, f_size);
+
+                        String tmpFileName = System.IO.Path.GetTempPath() + "tempImage.png";
+                        FileStream fs = new FileStream(tmpFileName, FileMode.OpenOrCreate, FileAccess.Write);
+                        fs.Write(f_data, 0, (int)f_size);
+                        fs.Close();
+
+                        Bitmap bitmap = new Bitmap(tmpFileName);
+                        int outW = bitmap.Height;
+                        int outH = bitmap.Width;
+                        byte[,,] outImage = new byte[3, outH, outW];
+                        for (int i = 0; i < outH; i++)
+                        {
+                            for (int k = 0; k < outW; k++)
+                            {
+                                Color c = bitmap.GetPixel(i, k);
+                                outImage[0, i, k] = c.R;
+                                outImage[1, i, k] = c.G;
+                                outImage[2, i, k] = c.B;
+                            }
+                        }
+                        bitmap.Dispose();
+                        System.IO.File.Delete(tmpFileName);
+
+                        InsertForm inf = new InsertForm(1, msdr["asset_rfid"].ToString(), msdr["asset_type"].ToString(), msdr["asset_name"].ToString(), msdr["asset_date"].ToString(), msdr["asset_price"].ToString(), msdr["asset_department"].ToString(), outH, outW, outImage);
+                        inf.ShowDialog();
+                    }
+                    else
+                    {
+                        byte[,,] outImage = null;
+                        InsertForm inf = new InsertForm(1, msdr["asset_rfid"].ToString(), msdr["asset_type"].ToString(), msdr["asset_name"].ToString(), msdr["asset_date"].ToString(), msdr["asset_price"].ToString(), msdr["asset_department"].ToString(), 0, 0, outImage);
+                        inf.ShowDialog();
+                    } 
+                }
+
+                msdr.Close();
+            }
+            else if (receivedData.Contains("RFID") == true && panel6_Update.Visible == true)
+            {
+                String tmpReceivedData = receivedData.Split('=')[1];
+                String tmpRFID = tmpReceivedData.Replace(" ", "");
+
+                mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_rfid='" + tmpRFID + "';";
+                msdr = mscm.ExecuteReader();
+                msdr.Read();
+
+                if (msdr["asset_user_id"].ToString() != user_id)
+                {
+                    msdr.Close();
+                    MessageBox.Show("해당자산의 사용자가 아닙니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else if (msdr.HasRows == true)
+                {
+                    InsertForm inf;
+                    if (!(msdr["asset_image"] is System.DBNull))
+                    {
+                        int f_size = int.Parse(msdr["asset_image_size"].ToString());
+                        byte[] f_data = new byte[f_size];
+                        msdr.GetBytes(msdr.GetOrdinal("asset_image"), 0, f_data, 0, f_size);
+
+                        String tmpFileName = System.IO.Path.GetTempPath() + "tempImage.png";
+                        FileStream fs = new FileStream(tmpFileName, FileMode.OpenOrCreate, FileAccess.Write);
+                        fs.Write(f_data, 0, (int)f_size);
+                        fs.Close();
+
+                        Bitmap bitmap = new Bitmap(tmpFileName);
+                        int outW = bitmap.Height;
+                        int outH = bitmap.Width;
+                        byte[,,] outImage = new byte[3, outH, outW];
+                        for (int i = 0; i < outH; i++)
+                        {
+                            for (int k = 0; k < outW; k++)
+                            {
+                                Color c = bitmap.GetPixel(i, k);
+                                outImage[0, i, k] = c.R;
+                                outImage[1, i, k] = c.G;
+                                outImage[2, i, k] = c.B;
+                            }
+                        }
+                        bitmap.Dispose();
+                        System.IO.File.Delete(tmpFileName);
+
+                        inf = new InsertForm(2, msdr["asset_rfid"].ToString(), msdr["asset_type"].ToString(), msdr["asset_name"].ToString(), msdr["asset_date"].ToString(), msdr["asset_price"].ToString(), msdr["asset_department"].ToString(), outH, outW, outImage);
+                    }
+                    else
+                    {
+                        byte[,,] outImage = null;
+                        inf = new InsertForm(2, msdr["asset_rfid"].ToString(), msdr["asset_type"].ToString(), msdr["asset_name"].ToString(), msdr["asset_date"].ToString(), msdr["asset_price"].ToString(), msdr["asset_department"].ToString(), 0, 0, outImage);
+                    }
+
+                    msdr.Close();
+                    inf.fileName = null;
+                    if (inf.ShowDialog() == DialogResult.OK)
+                    {
+                        if (inf.fileName == null)
+                        {
+                            mscm.CommandText = "UPDATE asset_tb SET asset_type = '" + inf.asset_Type + "', asset_name = '" + inf.asset_Name + "', asset_date = '" + inf.asset_Date + "', asset_price = " + inf.asset_Price + ", asset_department = '" + inf.asset_Department + "' WHERE asset_rfid = '" + tmpRFID + "';";
+                        }
+                        else
+                        {
+                            long f_size = new FileInfo(inf.fileName).Length;
+                            FileStream fs = new FileStream(inf.fileName, FileMode.Open, FileAccess.Read);
+                            byte[] blob_data = new byte[f_size];
+                            fs.Read(blob_data, 0, (int)f_size);
+                            fs.Close();
+
+                            mscm.CommandText = "UPDATE asset_tb SET asset_type = '" + inf.asset_Type + "', asset_name = '" + inf.asset_Name + "', asset_date = '" + inf.asset_Date + "', asset_price = " + inf.asset_Price + ", asset_department = '" + inf.asset_Department + "', asset_image = @BLOB_DATA, asset_image_size = " + f_size + " WHERE asset_rfid = '" + tmpRFID + "';";
+                            mscm.Parameters.AddWithValue("@BLOB_DATA", blob_data);
+                        }
+                        try
+                        {
+                            mscm.ExecuteNonQuery();
+                            inf.inImage = null;
+                            mscm.Parameters.Clear();
+                            MessageBox.Show("변경되었습니다.", "성공", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        catch { }
+                    }
+                }
+                else
+                {
+                    msdr.Close();
+                    MessageBox.Show("등록되지 않은 RFID입니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            else if (receivedData.Contains("RFID") == true && panel7_Out.Visible == true)
+            {
+                String tmpReceivedData = receivedData.Split('=')[1];
+                String tmpRFID = tmpReceivedData.Replace(" ", "");
+
+                mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_rfid='" + tmpRFID + "';";
+                msdr = mscm.ExecuteReader();
+                msdr.Read();
+
+                if (msdr["asset_user_id"].ToString() != user_id)
+                {
+                    msdr.Close();
+                    MessageBox.Show("해당자산의 사용자가 아닙니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else if (msdr.HasRows == true)
+                {
+                    msdr.Close();
+
+                    mscm.CommandText = "SELECT * FROM asset_inout_tb WHERE asset_inout_rfid='" + tmpRFID + "' AND asset_inout_state=TRUE;";
+                    msdr = mscm.ExecuteReader();
+                    msdr.Read();
+                    if (msdr.HasRows == true)
+                    {
+                        msdr.Close();
+                        MessageBox.Show("이미 반출된 자산입니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                    else
+                    {
+                        msdr.Close();
+                        InsertForm inf = new InsertForm(2, tmpRFID);
+                        if (inf.ShowDialog() == DialogResult.OK)
+                        {
+                            try
+                            {
+                                String date = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                                mscm.CommandText = "INSERT INTO asset_inout_tb VALUES (NULL, '" + tmpRFID + "', '" + date + "', '" + inf.asset_Reason + "', '" + inf.asset_InOut_Date + "', NULL, TRUE);";
+                                mscm.ExecuteNonQuery();
+                                MessageBox.Show("반출되었습니다.", "성공", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                            catch { }
+                        }
+                    }
+                }
+                else
+                {
+                    msdr.Close();
+                    MessageBox.Show("등록되지 않은 RFID입니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            else if (receivedData.Contains("RFID") == true && panel8_In.Visible == true)
+            {
+                String tmpReceivedData = receivedData.Split('=')[1];
+                String tmpRFID = tmpReceivedData.Replace(" ", "");
+
+                mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_rfid='" + tmpRFID + "';";
+                msdr = mscm.ExecuteReader();
+                msdr.Read();
+
+                if (msdr["asset_user_id"].ToString() != user_id)
+                {
+                    msdr.Close();
+                    MessageBox.Show("해당자산의 사용자가 아닙니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else if (msdr.HasRows == true)
+                {
+                    msdr.Close();
+
+                    mscm.CommandText = "SELECT * FROM asset_inout_tb WHERE asset_inout_rfid='" + tmpRFID + "' AND asset_inout_state=TRUE;";
+                    msdr = mscm.ExecuteReader();
+                    msdr.Read();
+                    if (msdr.HasRows == true)
+                    {
+                        if (MessageBox.Show("  반입 예정일 : " + msdr["asset_inout_temp_indate"].ToString().Split(' ')[0]+"\n\n      반입하겠습니까?", "Check", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                        {
+                            msdr.Close();
+
+                            String date = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                            try
+                            {
+                                mscm.CommandText = "UPDATE asset_inout_tb SET asset_inout_state=FALSE, asset_inout_indate='" + date + "' WHERE asset_inout_rfid='" + tmpRFID + "' AND asset_inout_state=TRUE;";
+                                mscm.ExecuteNonQuery();
+                                MessageBox.Show("반입되었습니다.", "성공", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                            catch { }
+                        }
+                        else
+                        {
+                            msdr.Close();
+                        }
+                    }
+                    else
+                    {
+                        msdr.Close();
+                        MessageBox.Show("반출되지 않은 자산입니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
+                else
+                {
+                    msdr.Close();
+                    MessageBox.Show("등록되지 않은 RFID입니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            else if (receivedData.Contains("RFID") == true && panel9_Delete.Visible == true)
+            {
+                String tmpReceivedData = receivedData.Split('=')[1];
+                String tmpRFID = tmpReceivedData.Replace(" ", "");
+
+                mscm.CommandText = "SELECT * FROM asset_tb WHERE asset_rfid='" + tmpRFID + "';";
+                msdr = mscm.ExecuteReader();
+                msdr.Read();
+
+                if (msdr["asset_user_id"].ToString() != user_id)
+                {
+                    msdr.Close();
+                    MessageBox.Show("해당자산의 사용자가 아닙니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else if (msdr.HasRows == true)
+                {
+                    msdr.Close();
+                    if (MessageBox.Show("  해당 자산을 폐기하겠습니까?", "Check", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    {
+                        try
+                        {
+                            String year = System.DateTime.Now.ToString("yyyy");
+                            mscm.CommandText = "INSERT INTO asset_delete_tb VALUES (NULL, " + year + ");";
+                            mscm.ExecuteNonQuery();
+                            mscm.CommandText = "DELETE FROM asset_inout_tb WHERE asset_inout_rfid = '" + tmpRFID + "';";
+                            mscm.ExecuteNonQuery();
+                            mscm.CommandText = "DELETE FROM asset_tb WHERE asset_rfid = '" + tmpRFID + "';";
+                            mscm.ExecuteNonQuery();
+                            MessageBox.Show("폐기되었습니다.", "성공", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        catch { }
+                    }
+                }
+                else
+                {
+                    msdr.Close();
+                    MessageBox.Show("등록되지 않은 RFID입니다.", "Fail", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+
+        }
+
+        private void metroButton10_Logout_Click(object sender, EventArgs e)
+        {
+            this.DialogResult = DialogResult.OK;
+        }
+
+    }
+}
